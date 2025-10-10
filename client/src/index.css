@@ -1,0 +1,199 @@
+/* client/src/index.css */
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Glitch Text Effect - COMPLETE AND SELF-CONTAINED === */
+.glitch-text {
+  position: relative;
+  /* Use the keyframe defined below */
+  animation: glitch 1s linear infinite;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text::before {
+  left: 2px;
+  text-shadow: -2px 0 #FF00FF;
+  clip: rect(44px, 9999px, 56px, 0);
+  /* Use the keyframe defined below */
+  animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+
+.glitch-text::after {
+  left: -2px;
+  text-shadow: -2px 0 #00F6FF, 2px 2px #FF00FF;
+  clip: rect(85px, 9999px, 90px, 0);
+  /* Use the keyframe defined below */
+  animation: glitch-anim-2 3s infinite linear alternate-reverse;
+}
+
+/* @keyframes definitions for Glitch Effect */
+@keyframes glitch {
+  2%,
+  64% {
+    transform: translate(2px, 0) skew(0deg);
+  }
+
+  4%,
+  60% {
+    transform: translate(-2px, 0) skew(0deg);
+  }
+
+  62% {
+    transform: translate(0, 0) skew(5deg);
+  }
+}
+
+@keyframes glitch-anim {
+  0% {
+    clip: rect(42px, 9999px, 44px, 0);
+  }
+
+  100% {
+    clip: rect(90px, 9999px, 92px, 0);
+  }
+}
+
+@keyframes glitch-anim-2 {
+  0% {
+    clip: rect(8px, 9999px, 99px, 0);
+  }
+
+  100% {
+    clip: rect(40px, 9999px, 130px, 0);
+  }
+}
+
+/* === END Glitch Text Effect === */
+
+/* Original @layer components and other styles */
+@layer components {
+  .card:hover .cardcontent> :not(.cardtitle),
+  .card:focuswithin .cardcontent> :not(.cardtitle) {
+    opacity: 1;
+  }
+
+  @media (hover: hover) {
+    .cardcontent> :not(.cardtitle) {
+      opacity: 0;
+      transition: opacity 500ms linear;
+    }
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Extra Thin Scrollbar with White Background */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  /* For Firefox */
+}
+
+/* For Webkit Browsers (Chrome, Safari, Edge) */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  /* Extra thin scrollbar width */
+  height: 4px;
+  /* For horizontal scrollbar */
+  background: #ffffff;
+  /* White scrollbar track background */
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  /* Gray thumb color */
+  border-radius: 10px;
+  /* Rounded scrollbar thumb */
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+  /* Slightly darker on hover */
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #ffffff;
+  /* White scrollbar track */
+}
+
+.scrollbar-thin::-webkit-scrollbar-button {
+  display: none;
+  /* Hide scrollbar up/down buttons */
+}
+
+/*Red Slider*/
+.inputrangered {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #00450d;
+  /*track color (Red400)*/
+  outline: none;
+}
+
+.inputrangered::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #111827;
+  /*thumb color (Red500)*/
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+.inputrangered::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #111827;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+/* Page Backgrounds - Keep these as they use linear-gradient */
+.pageBackground {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #B4121B, #000000);
+  background-size: cover, auto;
+  background-position: center;
+}
+
+.page2Background {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #0A1828, #178582);
+  background-size: cover, auto;
+  background-position: center;
+}
+
+.page3Background {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #BFA181, #EFFAFD);
+  background-size: cover, auto;
+  background-position: center;
+}
+
+.page4Background {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #4A8BDF, #A0006D);
+  background-size: cover, auto;
+  background-position: center;
+}

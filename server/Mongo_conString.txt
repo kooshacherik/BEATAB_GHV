@@ -1,0 +1,1 @@
+mongodb+srv://kooshatk__:fQgKPPWRqZzJSKvu@cluster0.7hftcyf.mongodb.net/

@@ -1,7 +1,8 @@
-// client/src/pages/template2.jsx (SettingsPanel.jsx) - Renamed for clarity
-import React, { useState, useEffect, useCallback } from "react";
+// client/src/pages/SettingsPanel.jsx
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 // Utility function for consistent class names
 const cx = (...classes) => classes.filter(Boolean).join(" ");
@@ -36,24 +37,33 @@ const sciFiLabelClass = "ml-2 text-gray-200 text-sm font-mono tracking-wide";
 
 function SettingsPanel({
   onSettingsChange,
-  showPanel,
   setShowPanel,
-  panelOffsetLeft, // New prop
-  // panelWidth is removed
   wordSettings,
+  navbarBounds, // Receive navbar bounds
 }) {
-  const [activeTab, setActiveTab] = useState("communication"); // 'communication' or 'pulseMode'
-  const [localWordSettings, setLocalWordSettings] = useState(wordSettings); // Use local state for internal panel changes
+  const [activeTab, setActiveTab] = useState("communication");
+  const [localWordSettings, setLocalWordSettings] = useState(wordSettings);
+  const panelRef = useRef(null);
 
-  // Sync prop changes to local state
   useEffect(() => {
     setLocalWordSettings(wordSettings);
   }, [wordSettings]);
 
-  // Notify parent component about settings changes
   useEffect(() => {
     onSettingsChange(localWordSettings);
   }, [localWordSettings, onSettingsChange]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (panelRef.current && !panelRef.current.contains(event.target)) {
+        setShowPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [setShowPanel]);
 
   const handleSettingChange = useCallback((key, value) => {
     setLocalWordSettings((prev) => ({ ...prev, [key]: value }));
@@ -101,21 +111,44 @@ function SettingsPanel({
     handleSettingChange("floorEffect", e.target.value);
   }, [handleSettingChange]);
 
+  const [panelStyle, setPanelStyle] = useState({});
+
+  useEffect(() => {
+    if (navbarBounds.width > 0 && panelRef.current) {
+      const panelRect = panelRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const contentAreaLeft = navbarBounds.width;
+      const contentAreaWidth = viewportWidth - contentAreaLeft;
+
+      const centerLeft = contentAreaLeft + (contentAreaWidth / 2);
+      const centerTop = viewportHeight / 2;
+
+      setPanelStyle({
+        position: 'fixed', // Keep fixed to easily position relative to viewport
+        left: `${centerLeft - (panelRect.width / 2)}px`,
+        top: `${centerTop - (panelRect.height / 2)}px`,
+      });
+    }
+  }, [navbarBounds, activeTab]); // Recalculate if navbarBounds change or activeTab changes
+
   return (
     <motion.div
+      ref={panelRef}
       id="settings-panel"
-      initial={{ opacity: 0, x: -20 }} // Animate from left (off-screen)
-      animate={{ opacity: 1, x: 0 }}   // Slide in to position
-      exit={{ opacity: 0, x: -20 }}    // Slide out
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1, ...panelStyle }} // Apply dynamic style here
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       role="dialog"
       aria-label="Settings panel"
-      // Position absolutely relative to its parent hover container
-      // Use dynamic left based on panelOffsetLeft prop
-      className={`absolute top-0 left-[${panelOffsetLeft}] mt-0 p-4
-                 bg-gradient-to-bl from-black/80 to-gray-900/80 backdrop-blur-sm rounded-lg shadow-2xl flex flex-col
-                 min-w-[280px] max-w-[480px] max-h-screen overflow-y-auto border border-cyan-700 shadow-cyan-500/15
-                 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent z-[500]`} // Increased z-index
+      className={`p-4
+                 bg-gradient-to-bl from-black/80 to-gray-900/80 backdrop-blur-md rounded-lg shadow-2xl flex flex-col
+                 border border-cyan-700 shadow-cyan-500/15
+                 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent z-[500]
+                 overflow-y-auto max-h-[90vh]`}
+      style={{ ...panelStyle }} // Also apply for initial render positioning
     >
       <div className="flex justify-around mb-4 border-b border-cyan-800 pb-2">
         <button
@@ -414,9 +447,7 @@ function SettingsPanel({
 
 SettingsPanel.propTypes = {
   onSettingsChange: PropTypes.func.isRequired,
-  showPanel: PropTypes.bool.isRequired,
   setShowPanel: PropTypes.func.isRequired,
-  panelOffsetLeft: PropTypes.string.isRequired,
   wordSettings: PropTypes.shape({
     wordChangeMode: PropTypes.string,
     manualWordChange: PropTypes.string,
@@ -428,6 +459,12 @@ SettingsPanel.propTypes = {
     textEffect: PropTypes.string,
     floorTexture: PropTypes.string,
     floorEffect: PropTypes.string,
+  }).isRequired,
+  navbarBounds: PropTypes.shape({
+    top: PropTypes.number,
+    left: PropTypes.number,
+    width: PropTypes.number,
+    height: PropTypes.number,
   }).isRequired,
 };
 

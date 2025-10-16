@@ -1,11 +1,5 @@
 // client/src/pages/Freestyle.jsx
-import React, {
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  useMemo
-} from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -14,21 +8,6 @@ import Footer from "../components/Footer";
 import Renderer from "../components/Renderer";
 import FreestyleNavbar from "../components/FreestyleNavbar";
 import ParticlesBackground from "../components/ParticlesBackground";
-
-/*
-  Notes about changes:
-  - The audio player that used to be conditionally rendered as a plain div
-    has been replaced with a motion.div inside AnimatePresence to provide
-    smooth show/hide animations.
-  - The player is draggable with the mouse (dragging anywhere on the player).
-    It is also resizable by dragging a bottom-left resize handle.
-  - Position and size persist while the page is open (in-memory). You can
-    extend this to localStorage if you want persistence across reloads.
-  - Resizing enforces min/max constraints and keeps the player within the viewport.
-  - All pointer interactions have fallbacks for touch devices.
-  - Handlers include prevention of text selection during drags and cleanup.
-  - The toggle button for the player uses the same AnimatePresence so showing/hiding is smooth.
-*/
 
 const HudIcon = ({ size = 24, className = "" }) => (
   <svg
@@ -86,46 +65,16 @@ const ExitFSIcon = (
     />
   </svg>
 );
-
-// Add loop icons
+// Add new icons for loop modes at the icon section
 const LoopNoneIcon = ({ size = 22, className = "" }) => (
-  <svg
-    width={size}
-    height={size}
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-  >
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.5" />
-    <path d="M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-  </svg>
+  <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.5"/><path d="M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
 );
 const LoopPlaylistIcon = ({ size = 22, className = "" }) => (
-  <svg
-    width={size}
-    height={size}
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-  >
-    <path d="M4 4v6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M20 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M5 19a9 9 0 1 1 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-  </svg>
+  <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none"><path d="M4 4v6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 19a9 9 0 1 1 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
 );
 const LoopSingleIcon = ({ size = 22, className = "" }) => (
-  <svg
-    width={size}
-    height={size}
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-  >
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-    <text x="12" y="16" textAnchor="middle" fontSize="10" fill="currentColor" fontFamily="monospace">1</text>
-  </svg>
+  <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><text x="12" y="16" textAnchor="middle" fontSize="10" fill="currentColor" fontFamily="monospace">1</text></svg>
 );
-
 const FreestylePage = () => {
   // --- STATES ---
   const [wordsHistory, setWordsHistory] = useState([]);
@@ -135,6 +84,7 @@ const FreestylePage = () => {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [isShuffling, setIsShuffling] = useState(false);
+  // Add loop mode state (0 = no loop, 1 = loop playlist, 2 = loop single)
   const [loopMode, setLoopMode] = useState(0);
 
   const [userId, setUserId] = useState(null);
@@ -180,10 +130,10 @@ const FreestylePage = () => {
     cameraEffect: "none",
     textEffect: "punched",
     floorTexture: "none",
-    floorEffect: "none"
+    floorEffect: "none",   // New default
   });
 
-  const cycleLoopMode = useCallback(() => {
+const cycleLoopMode = useCallback(() => {
     setLoopMode((prev) => (prev + 1) % 3);
   }, []);
 
@@ -192,159 +142,7 @@ const FreestylePage = () => {
     setWordSettings(newSettings);
   }, []);
 
-  // --- Player position & size (NEW) ---
-  // Default size and position (bottom-left)
-  const PLAYER_MIN_WIDTH = 360;
-  const PLAYER_MIN_HEIGHT = 140;
-  const PLAYER_MAX_WIDTH = 1200;
-  const PLAYER_MAX_HEIGHT = 800;
-
-  const [playerSize, setPlayerSize] = useState({
-    width: 720,
-    height: 320
-  });
-
-  const [playerPos, setPlayerPos] = useState(() => {
-    // default bottom-left margin offset
-    return {
-      x: 24,
-      y: 24 // from bottom (we will convert to top coordinates when rendering)
-    };
-  });
-
-  // internal refs for dragging/resizing state
-  const playerRef = useRef(null);
-  const draggingRef = useRef(false);
-  const resizingRef = useRef(false);
-  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, startX: 0, startY: 0 });
-  const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, startW: 0, startH: 0, startX: 0, startY: 0 });
-
-  // ensure player remains on screen after resize or move
-  const clampPlayerToViewport = useCallback((x, y, width, height) => {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    // convert bottom-based y to top coordinate for clamping: playerPos.y stored as distance from bottom
-    // But easier: we will use top coordinate in render. For storing, keep bottom offset as earlier. When clamping, convert.
-    // We'll clamp so that player fully stays inside viewport
-    let top = y;
-    if (top < 8) top = 8;
-    if (top + height > vh - 8) top = Math.max(8, vh - 8 - height);
-    let left = x;
-    if (left < 8) left = 8;
-    if (left + width > vw - 8) left = Math.max(8, vw - 8 - width);
-    return { left, top };
-  }, []);
-
-  // Convert stored bottom-left style (playerPos.x from left, playerPos.y from bottom) to top-left for rendering
-  const computeRenderPosition = useCallback(() => {
-    const left = playerPos.x;
-    const top = window.innerHeight - playerPos.y - playerSize.height;
-    // ensure visible
-    const clamped = clampPlayerToViewport(left, top, playerSize.width, playerSize.height);
-    return { left: clamped.left, top: clamped.top };
-  }, [playerPos, playerSize, clampPlayerToViewport]);
-
-  // pointer handlers
-  useEffect(() => {
-    const onPointerMove = (ev) => {
-      if (resizingRef.current) {
-        ev.preventDefault();
-        const p = ev;
-        const dx = p.clientX - resizeStartRef.current.mouseX;
-        const dy = p.clientY - resizeStartRef.current.mouseY;
-        // bottom-left resize: moving the corner changes width and height and also x position (left) because the resize anchor is bottom-left
-        // Our stored playerPos.x is left offset; stored playerPos.y is bottom offset.
-        // We will compute new width/height and new left/top then convert back to left and bottom storage.
-        let newW = Math.max(PLAYER_MIN_WIDTH, Math.min(PLAYER_MAX_WIDTH, resizeStartRef.current.startW - dx));
-        let newH = Math.max(PLAYER_MIN_HEIGHT, Math.min(PLAYER_MAX_HEIGHT, resizeStartRef.current.startH + dy));
-        // Because dragging bottom-left: as width decreases/increases, left should move to keep bottom-left anchored to cursor.
-        // startX = left when resizing started.
-        const newLeft = resizeStartRef.current.startX + (resizeStartRef.current.startW - newW);
-        // top is startTop (converted from stored bottom) - dy? We need to keep bottom anchored to cursor, y increases downward.
-        const startTop = resizeStartRef.current.startTop;
-        const newTop = startTop - (newH - resizeStartRef.current.startH);
-        // clamp
-        const clamped = clampPlayerToViewport(newLeft, newTop, newW, newH);
-        // convert clamped top back to bottom offset:
-        const newBottom = Math.max(8, window.innerHeight - (clamped.top + newH));
-        // update
-        setPlayerSize({ width: newW, height: newH });
-        setPlayerPos((prev) => ({ ...prev, x: clamped.left, y: newBottom }));
-        return;
-      }
-
-      if (draggingRef.current) {
-        ev.preventDefault();
-        const p = ev;
-        const dx = p.clientX - dragStartRef.current.mouseX;
-        const dy = p.clientY - dragStartRef.current.mouseY;
-        const newLeft = dragStartRef.current.startX + dx;
-        const newTop = dragStartRef.current.startY + dy;
-        const clamped = clampPlayerToViewport(newLeft, newTop, playerSize.width, playerSize.height);
-        const newBottom = Math.max(8, window.innerHeight - (clamped.top + playerSize.height));
-        setPlayerPos((prev) => ({ ...prev, x: clamped.left, y: newBottom }));
-      }
-    };
-
-    const onPointerUp = (ev) => {
-      if (resizingRef.current) {
-        resizingRef.current = false;
-        document.body.style.userSelect = "";
-      }
-      if (draggingRef.current) {
-        draggingRef.current = false;
-        document.body.style.userSelect = "";
-      }
-    };
-
-    window.addEventListener("pointermove", onPointerMove, { passive: false });
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
-
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerUp);
-    };
-  }, [playerSize, clampPlayerToViewport]);
-
-  const onPlayerPointerDown = useCallback((e) => {
-    // Start dragging
-    // Only start drag if primary button
-    if (e.button && e.button !== 0) return;
-    // Prevent starting drag when clicking on interactive elements inside (e.g., buttons, inputs)
-    if (e.target.closest("button") || e.target.closest("input") || e.target.closest("a") || e.target.closest("svg")) {
-      return;
-    }
-    draggingRef.current = true;
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      startX: computeRenderPosition().left,
-      startY: computeRenderPosition().top
-    };
-    // disable text selection while dragging
-    document.body.style.userSelect = "none";
-  }, [computeRenderPosition]);
-
-  const onResizePointerDown = useCallback((e) => {
-    // only primary button
-    if (e.button && e.button !== 0) return;
-    e.stopPropagation();
-    resizingRef.current = true;
-    const renderPos = computeRenderPosition();
-    resizeStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      startW: playerSize.width,
-      startH: playerSize.height,
-      startX: renderPos.left,
-      startTop: renderPos.top
-    };
-    document.body.style.userSelect = "none";
-  }, [playerSize, computeRenderPosition]);
-
-  // --- The rest of the existing app logic ---
+  // --- LOGIC ---
   const currentPlaylist = useMemo(() => {
     if (currentPlaylistName === "All") {
       return allBeats;
@@ -426,7 +224,7 @@ const FreestylePage = () => {
     }
   }, [userId, fetchUserPlaylists]);
 
-  // New admin sync
+  // New useEffect to call sync-beats endpoint for admin users
   useEffect(() => {
     const syncBeatsAdmin = async () => {
       if (userId && userRole === "admin") {
@@ -440,7 +238,8 @@ const FreestylePage = () => {
       }
     };
     syncBeatsAdmin();
-  }, [userId, userRole, handleApiError]);
+  }, [userId, userRole, handleApiError]); // Dependencies: userId and userRole
+
 
   const getSafeDuration = useCallback(() => {
     if (!Renderer.audioManager) return 0;
@@ -533,10 +332,12 @@ const FreestylePage = () => {
         await Renderer.audioManager.changeAudio(audioUrl, { autoplay: true });
         setIsPlayingAudio(true);
         recordSongPlay(audioUrl);
+        // Start BPM tracking after audio changes and starts playing
         if (Renderer.bpmManager && Renderer.audioManager.isPlaying) {
           Renderer.bpmManager.startBeatTracking(Renderer.audioManager.audio.source, Renderer.audioManager.audioContext);
         }
       } else {
+        // If audioManager is not initialized, initialize it and autoplay
         await Renderer.instance.init(audioUrl, true);
         setIsPlayingAudio(true);
         recordSongPlay(audioUrl);
@@ -570,10 +371,12 @@ const FreestylePage = () => {
         await Renderer.audioManager.changeAudio(trackToPlay.url, { autoplay: true });
         setIsPlayingAudio(true);
         recordSongPlay(trackToPlay.url);
+        // Start BPM tracking after track change
         if (Renderer.bpmManager && Renderer.audioManager.isPlaying) {
           Renderer.bpmManager.startBeatTracking(Renderer.audioManager.audio.source, Renderer.audioManager.audioContext);
         }
       } else {
+        // If audioManager is not initialized, initialize it and autoplay
         await Renderer.instance.init(trackToPlay.url, true);
         setIsPlayingAudio(true);
         recordSongPlay(trackToPlay.url);
@@ -590,15 +393,18 @@ const FreestylePage = () => {
       if (!urlToPlay) return;
 
       setAudioState(urlToPlay);
-      await Renderer.instance.init(urlToPlay, true);
+      // Initialize Renderer and start playing
+      await Renderer.instance.init(urlToPlay, true); 
       setIsPlayingAudio(true);
       recordSongPlay(urlToPlay);
+      // BPM tracking will be started within Renderer.init if autoplay is true
       return;
     }
 
     if (isPlayingAudio) {
       Renderer.audioManager.pause();
       setIsPlayingAudio(false);
+      // Stop BPM tracking on pause
       if (Renderer.bpmManager) {
         Renderer.bpmManager.stopBeatTracking();
       }
@@ -606,6 +412,7 @@ const FreestylePage = () => {
       Renderer.audioManager.play();
       setIsPlayingAudio(true);
       recordSongPlay(audioState);
+      // Start BPM tracking on play
       if (Renderer.bpmManager && Renderer.audioManager.isPlaying) {
         Renderer.bpmManager.startBeatTracking(Renderer.audioManager.audio.source, Renderer.audioManager.audioContext);
       }
@@ -618,11 +425,13 @@ const FreestylePage = () => {
   const playNextTrack = useCallback(async () => {
     if (currentPlaylist.length === 0) return;
     if (loopMode === 2) {
+      // "Loop Single": just restart current
       await playTrackAt(currentTrackIndex);
       return;
     }
     let nextIndex;
     if (isShuffling) {
+      // Shuffle ignores looping if not "loop single"
       nextIndex = Math.floor(Math.random() * currentPlaylist.length);
       if (nextIndex === currentTrackIndex && currentPlaylist.length > 1)
         nextIndex = (nextIndex + 1) % currentPlaylist.length;
@@ -631,8 +440,10 @@ const FreestylePage = () => {
     }
     if (nextIndex >= currentPlaylist.length) {
       if (loopMode === 1) {
+        // "Loop Playlist"
         await playTrackAt(0);
       } else {
+        // "No Loop" - stop playback
         setIsPlayingAudio(false);
         Renderer.audioManager?.pause?.();
       }
@@ -640,10 +451,10 @@ const FreestylePage = () => {
       await playTrackAt(nextIndex);
     }
   }, [currentPlaylist, currentTrackIndex, playTrackAt, isShuffling, loopMode]);
-
   const playPreviousTrack = useCallback(async () => {
     if (currentPlaylist.length === 0) return;
     if (loopMode === 2) {
+      // "Loop Single": just restart current
       await playTrackAt(currentTrackIndex);
       return;
     }
@@ -670,7 +481,7 @@ const FreestylePage = () => {
   const handleAudioEnded = useCallback(async () => {
     console.log("Audio ended event received.");
     if (Renderer.bpmManager) {
-      Renderer.bpmManager.stopBeatTracking();
+      Renderer.bpmManager.stopBeatTracking(); // Stop BPM tracking when audio ends
     }
     await playNextTrack();
   }, [playNextTrack]);
@@ -679,7 +490,11 @@ const FreestylePage = () => {
     let cleanup = () => {};
     const attach = () => {
       if (!Renderer.audioManager) return;
-      cleanup = () => { /* no-op */ };
+      // The event listener is now added in createManagers, and removed in destroyManagers
+      // The `handleAudioEnded` from props will be used by Renderer.
+      // No direct event listener setup here, rely on Renderer to manage it.
+      // This ensures a single source of truth for event management.
+      cleanup = () => { /* no-op, Renderer cleans up */ };
     };
     if (Renderer.audioManager) attach();
     else {
@@ -690,9 +505,9 @@ const FreestylePage = () => {
         }
       }, 200);
       cleanup = () => clearInterval(id);
-    };
+    }
     return cleanup;
-  }, []);
+  }, []); // Removed handleAudioEnded from dependencies as it's passed as prop
 
   useEffect(() => {
     let timer;
@@ -766,19 +581,23 @@ const FreestylePage = () => {
         setAudioState(firstTrackUrl);
 
         if (Renderer.audioManager) {
+          // Do not autoplay when simply selecting a playlist. User will click play.
           await Renderer.audioManager.changeAudio(firstTrackUrl, { autoplay: false });
           setIsPlayingAudio(false);
+          // Stop BPM tracking on playlist selection if not autoplaying
           if (Renderer.bpmManager) {
             Renderer.bpmManager.stopBeatTracking();
           }
         } else {
-          await Renderer.instance.init(firstTrackUrl, false);
-          setIsPlayingAudio(false);
+            // If audioManager is not initialized, initialize it without autoplay
+            await Renderer.instance.init(firstTrackUrl, false);
+            setIsPlayingAudio(false);
         }
       } else {
         setAudioState(null);
         Renderer.audioManager?.stop?.();
         setIsPlayingAudio(false);
+        // Stop BPM tracking if no audio
         if (Renderer.bpmManager) {
           Renderer.bpmManager.stopBeatTracking();
         }
@@ -810,7 +629,7 @@ const FreestylePage = () => {
           songIds,
         });
         if (response.status === 201) {
-          toast.success(`Playlist \"${name}\" created!`);
+          toast.success(`Playlist \\"${name}\\" created!`);
           await fetchUserPlaylists();
           setIsNewPlaylistOpen(false);
           setNewPlaylistName("");
@@ -906,10 +725,13 @@ const FreestylePage = () => {
         if (userId) {
           fetchUserPlaylists();
         }
-
+        
+        // If audioState is already set (e.g., from a deep link or previous session),
+        // ensure the audio manager is initialized with it, but don't autoplay here.
+        // Playback will be handled by explicit user action or component lifecycle if already playing.
         if (audioState && !Renderer.audioManager && allBeatsMetaData.current[audioState]) {
-          await Renderer.instance.init(audioState, false);
-          setIsPlayingAudio(false);
+            await Renderer.instance.init(audioState, false); // Initialize without autoplay
+            setIsPlayingAudio(false);
         }
       } catch (error) {
         handleApiError(error, "Failed to load song data.");
@@ -1016,9 +838,6 @@ const FreestylePage = () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [handleFullscreenChange]);
 
-  // compute render pos each render (ensures it updates on resize)
-  const renderPos = computeRenderPosition();
-
   // --- JSX ---
   return (
     <>
@@ -1041,14 +860,13 @@ const FreestylePage = () => {
         />
 
         <section className="text-center py-16 px-4 relative overflow-hidden">
-          {!isFullscreen && (
-            <h2
-              data-text="Freestyle Flow"
-              className="glitch-text relative text-6xl font-bold text-cyan-500 mb-8 tracking-widest uppercase font-mono"
-            >
-              Freestyle Flow
-            </h2>
-          )}
+          {!isFullscreen && (<h2
+            data-text="Freestyle Flow"
+            className="glitch-text relative text-6xl font-bold text-cyan-500 mb-8 tracking-widest uppercase font-mono"
+          >
+            Freestyle Flow
+          </h2>
+        )}
           {showDataStream && (
             <div
               className="absolute top-28 right-8 w-40 max-h-[70vh] bg-cyan-900/10 backdrop-blur-md border border-cyan-500/50 rounded-lg p-6 shadow-lg shadow-cyan-500/10 flex flex-col overflow-y-auto overflow-x-hidden z-30 transform transition-all duration-500 ease-in-out hover:shadow-cyan-500/30 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent animate-fadeInUp"
@@ -1097,277 +915,244 @@ const FreestylePage = () => {
             <div
               className={`relative ${
                 isFullscreen ? "w-90 h-full" : "w-full h-[90vh] max-w-6xl"
-              } bg-black/20 opacity-20 rounded-lg border border-cyan-500/30 overflow-hidden`}
+              } bg-black/20 rounded-lg border border-cyan-500/30 overflow-hidden`}
             >
               <Renderer
                 wordsHistory={wordsHistory}
                 appendWord={appendWord}
                 currentAudio={audioState}
                 setIsPlayingAudio={setIsPlayingAudio}
-                isPlayingAudio={isPlayingAudio}
+                isPlayingAudio={isPlayingAudio} // Pass isPlayingAudio to Renderer
                 isFullscreen={isFullscreen}
                 wordSettings={wordSettings}
-                handleAudioEnded={handleAudioEnded}
+                handleAudioEnded={handleAudioEnded} // Pass handleAudioEnded as a prop
               />
             </div>
           </div>
         </section>
 
-        {/* AUDIO PLAYER: animated, draggable and resizable */}
-        <AnimatePresence>
-          {isAudioPlayerVisible && (
-            <motion.div
-              key="audio-player"
-              ref={playerRef}
-              initial={{ opacity: 0, scale: 0.95, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 24 }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
-              // position fixed using computed renderPos and playerSize
-              style={{
-                position: "fixed",
-                left: renderPos.left,
-                top: renderPos.top,
-                width: playerSize.width,
-                height: playerSize.height,
-                zIndex: 60,
-                touchAction: "none" // essential for pointer drag
-              }}
-              className="bg-black/40 backdrop-blur-xl border border-cyan-400/50 rounded-lg p-4 shadow-2xl"
-              onPointerDown={onPlayerPointerDown}
-            >
-              {/* Header (draggable area) */}
-              <div
-                className="flex justify-between items-center mb-3"
-                style={{ cursor: "grab", userSelect: "none" }}
-              >
-                <div className="text-left">
-                  <div className="text-lg font-bold text-white truncate">
-                    {audioState ? getBeatLabelFromUrl(audioState) : "No Audio Loaded"}
-                  </div>
-                  <div className="text-xs text-cyan-300 mt-1 font-mono truncate">
-                    PLAYLIST:{" "}
-                    <span className="font-semibold text-white">
-                      {currentPlaylistName === "All" ? "All Beats" : currentPlaylistName}
-                    </span>
-                  </div>
+        {isAudioPlayerVisible && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-11/12 max-w-3xl bg-black/40 backdrop-blur-xl border border-cyan-400/50 p-6 rounded-lg shadow-2xl z-50 animate-pulse-glow [--tw-shadow-color:theme(colors.cyan.500)]">
+            <div className="flex justify-between items-center mb-4 border-b border-cyan-400/30 pb-3">
+              <div className="text-left">
+                <div className="text-xl font-bold text-white">
+                  {audioState ? getBeatLabelFromUrl(audioState) : "No Audio Loaded"}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="relative" ref={dropdownRef}>
-                    <button
-                      className="sci-fi-button"
-                      onClick={() => setIsPlaylistMenuOpen((o) => !o)}
-                      aria-label="Choose playlist"
-                    >
-                      <span>
-                        {currentPlaylistName === "All" ? "All Beats" : currentPlaylistName}
-                      </span>
-                      <span
-                        className={`ml-2 transition-transform duration-300 ${
-                          isPlaylistMenuOpen ? "rotate-180" : ""
-                        }`}
-                      >
-                        ▼
-                      </span>
-                    </button>
-                    {isPlaylistMenuOpen && (
-                      <div className="absolute top-full right-0 mt-3 bg-black/70 backdrop-blur-xl border border-cyan-500/50 rounded-lg p-3 w-56 shadow-2xl z-70">
-                        <div
-                          className={`px-4 py-2 rounded-lg mb-2 text-lg cursor-pointer ${
-                            currentPlaylistName === "All"
-                              ? "bg-cyan-600 text-black font-bold"
-                              : "text-white hover:bg-cyan-900"
-                          }`}
-                          onClick={() => selectPlaylist("All")}
-                        >
-                          All Beats
-                        </div>
-                        {Object.keys(userPlaylists).map((name) => (
-                          <div
-                            key={name}
-                            className={`px-4 py-2 rounded-lg mb-2 text-lg cursor-pointer flex justify-between items-center ${
-                              currentPlaylistName === name
-                                ? "bg-cyan-600 text-black font-bold"
-                                : "text-white hover:bg-cyan-900"
-                            }`}
-                            onClick={() => selectPlaylist(name)}
-                          >
-                            {name}
-                            <button
-                              className="ml-2 text-red-400 hover:text-red-600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteUserPlaylist(name);
-                              }}
-                            >
-                              {" "}
-                              (x)
-                            </button>
-                          </div>
-                        ))}
-                        <div className="h-px bg-cyan-500 my-2" />
-                        <div
-                          className="px-4 py-2 rounded-lg text-green-400 cursor-pointer flex items-center gap-2 border border-green-700 border-dashed hover:bg-green-900"
-                          onClick={() => {
-                            setIsPlaylistMenuOpen(false);
-                            setIsNewPlaylistOpen(true);
-                          }}
-                        >
-                          <span className="font-extrabold text-xl">＋</span> New Playlist
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    className="sci-fi-button"
-                    onClick={() => {
-                      // toggle visibility with animation
-                      setIsAudioPlayerVisible(false);
-                    }}
-                    aria-label="Hide player"
-                    title="Hide player"
-                  >
-                    Hide
-                  </button>
+                <div className="text-sm text-cyan-300 mt-1 font-mono">
+                  PLAYLIST:{" "}
+                  <span className="font-semibold text-white">
+                    {currentPlaylistName === "All" ? "All Beats" : currentPlaylistName}
+                  </span>
                 </div>
               </div>
-
-              {/* Progress bar */}
-              <div
-                ref={progressBarRef}
-                className="w-full h-2.5 bg-cyan-900/50 rounded-full mt-1 cursor-pointer group relative"
-                onMouseEnter={() => setIsHoveringProgress(true)}
-                onMouseMove={updateHoverFromMouse}
-                onMouseLeave={() => setIsHoveringProgress(false)}
-                onClick={handleProgressClick}
-                style={{ userSelect: "none" }}
-              >
-                <div
-                  className="h-full bg-cyan-400 rounded-full transition-all duration-100 linear shadow-[0_0_8px_theme(colors.cyan.500)]"
-                  style={{ width: `${progressPercent}%` }}
-                />
-                {isHoveringProgress && getSafeDuration() > 0 && (
-                  <>
-                    <div
-                      className="absolute -top-8 transform -translate-x-1/2 bg-black border border-cyan-400/50 text-white text-xs px-2 py-1 rounded shadow-lg pointer-events-none font-mono"
-                      style={{ left: `${hoverPercent * 100}%` }}
-                    >
-                      {formatTime(hoverTime)}
-                    </div>
-                    <div
-                      className="absolute top-0 h-full w-0.5 bg-white pointer-events-none"
-                      style={{ left: `${hoverPercent * 100}%` }}
-                    />
-                  </>
-                )}
-              </div>
-              <div className="flex justify-between w-full text-sm text-cyan-300 mt-2 font-mono">
-                <span>{formatTime(audioCurrentTime)}</span>
-                <span>{formatTime(audioDuration)}</span>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center justify-center gap-3 mt-4">
-                <button
-                  className="sci-fi-button-round"
-                  onClick={playPreviousTrack}
-                  aria-label="Previous"
-                >
-                  ⏮
-                </button>
-                <button
-                  className={`rounded-full p-3 text-2xl cursor-pointer shadow-xl transition-all duration-300 ${
-                    isPlayingAudio ? "bg-red-600 hover:bg-red-500" : "bg-green-600 hover:bg-green-500"
-                  } text-white`}
-                  onClick={toggleAudioPlayback}
-                  aria-label="Play/Pause"
-                >
-                  {isPlayingAudio ? "❚❚" : "▶"}
-                </button>
-                <button
-                  className="sci-fi-button-round"
-                  onClick={playNextTrack}
-                  aria-label="Next"
-                >
-                  ⏭
-                </button>
-
-                <button
-                  className={`sci-fi-button ${isShuffling ? "bg-yellow-500 text-black hover:bg-yellow-400" : ""}`}
-                  onClick={toggleShuffle}
-                  aria-label="Shuffle"
-                >
-                  🔀 {isShuffling ? "ON" : "OFF"}
-                </button>
-
+              <div className="relative" ref={dropdownRef}>
                 <button
                   className="sci-fi-button"
-                  onClick={cycleLoopMode}
-                  aria-label={
-                    loopMode === 0
-                      ? "No loop"
-                      : loopMode === 1
-                        ? "Loop playlist"
-                        : "Loop single track"
-                  }
-                  title={
-                    loopMode === 0
-                      ? "No loop"
-                      : loopMode === 1
-                        ? "Loop playlist"
-                        : "Loop single"
-                  }
+                  onClick={() => setIsPlaylistMenuOpen((o) => !o)}
+                  aria-label="Choose playlist"
                 >
-                  {loopMode === 0 ? <LoopNoneIcon /> : loopMode === 1 ? <LoopPlaylistIcon /> : <LoopSingleIcon />}
+                  <span>
+                    {currentPlaylistName === "All" ? "All Beats" : currentPlaylistName}
+                  </span>
+                  <span
+                    className={`ml-2 transition-transform duration-300 ${
+                      isPlaylistMenuOpen ? "rotate-180" : ""
+                    }`}
+                  >
+                    ▼
+                  </span>
                 </button>
-              </div>
-
-              {/* Tracks area */}
-              <div
-                className="mt-4 bg-black/30 border border-cyan-700 rounded-lg p-3 overflow-auto"
-                style={{ maxHeight: Math.max(80, playerSize.height - 200) }}
-                onMouseEnter={() => setShowTracksHover(true)}
-                onMouseLeave={() => setShowTracksHover(false)}
-              >
-                {!showTracksHover ? (
-                  <div className="flex items-center text-cyan-300 text-sm">
-                    <span>
-                      Tracks in{" "}
-                      {currentPlaylistName === "All" ? "All Beats" : currentPlaylistName}:
-                    </span>
-                    <span className="ml-2 bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-bold">
-                      {currentPlaylist.length}
-                    </span>
-                    <span className="ml-auto text-cyan-400">Hover to view ▸</span>
-                  </div>
-                ) : currentPlaylist.length === 0 ? (
-                  <div className="text-cyan-300 text-center py-4">
-                    No tracks in this playlist.
-                  </div>
-                ) : (
-                  <div className="max-h-44 overflow-y-auto pr-2 scrollbar-thin">
-                    {currentPlaylist.map((track, i) => {
-                      const active = i === currentTrackIndex && audioState === track.url;
-                      const displayName = track.name || "Unknown Track";
-                      return (
-                        <div
-                          key={`${track.url}-${i}`}
-                          className={`flex items-center justify-between p-2 mb-2 rounded-md cursor-pointer ${
-                            active ? "bg-cyan-600 text-black" : "bg-black/40 text-white hover:bg-cyan-900"
-                          }`}
-                          onClick={() => playTrackAt(i)}
+                {isPlaylistMenuOpen && (
+                  <div className="absolute top-full right-0 mt-3 bg-black/70 backdrop-blur-xl border border-cyan-500/50 rounded-lg p-3 w-56 shadow-2xl z-50 animate-fadeInUp">
+                    <div
+                      className={`px-4 py-2 rounded-lg mb-2 text-lg cursor-pointer ${
+                        currentPlaylistName === "All"
+                          ? "bg-cyan-600 text-black font-bold"
+                          : "text-white hover:bg-cyan-900"
+                      }`}
+                      onClick={() => selectPlaylist("All")}
+                    >
+                      All Beats
+                    </div>
+                    {Object.keys(userPlaylists).map((name) => (
+                      <div
+                        key={name}
+                        className={`px-4 py-2 rounded-lg mb-2 text-lg cursor-pointer flex justify-between items-center ${
+                          currentPlaylistName === name
+                            ? "bg-cyan-600 text-black font-bold"
+                            : "text-white hover:bg-cyan-900"
+                        }`}
+                        onClick={() => selectPlaylist(name)}
+                      >
+                        {name}
+                        <button
+                          className="ml-2 text-red-400 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteUserPlaylist(name);
+                          }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-6 h-6 flex items-center justify-center rounded-md font-bold text-xs ${
-                                active ? "bg-black text-cyan-400" : "bg-gray-700"
-                              }`}
-                            >
-                              {i + 1}
-                            </div>
-                            <div className="font-semibold text-sm truncate">
+                          {" "}
+                          (x)
+                        </button>
+                      </div>
+                    ))}
+                    <div className="h-px bg-cyan-500 my-2" />
+                    <div
+                      className="px-4 py-2 rounded-lg text-green-400 cursor-pointer flex items-center gap-2 border border-green-700 border-dashed hover:bg-green-900"
+                      onClick={() => {
+                        setIsPlaylistMenuOpen(false);
+                        setIsNewPlaylistOpen(true);
+                      }}
+                    >
+                      <span className="font-extrabold text-xl">＋</span> New Playlist
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div
+              ref={progressBarRef}
+              className="w-full h-2.5 bg-cyan-900/50 rounded-full mt-4 cursor-pointer group relative"
+              onMouseEnter={() => setIsHoveringProgress(true)}
+              onMouseMove={updateHoverFromMouse}
+              onMouseLeave={() => setIsHoveringProgress(false)}
+              onClick={handleProgressClick}
+            >
+              <div
+                className="h-full bg-cyan-400 rounded-full transition-all duration-100 linear shadow-[0_0_8px_theme(colors.cyan.500)]"
+                style={{ width: `${progressPercent}%` }}
+              />
+              {isHoveringProgress && getSafeDuration() > 0 && (
+                <>
+                  <div
+                    className="absolute -top-8 transform -translate-x-1/2 bg-black border border-cyan-400/50 text-white text-xs px-2 py-1 rounded shadow-lg pointer-events-none font-mono"
+                    style={{ left: `${hoverPercent * 100}%` }}
+                  >
+                    {formatTime(hoverTime)}
+                  </div>
+                  <div
+                    className="absolute top-0 h-full w-0.5 bg-white pointer-events-none"
+                    style={{ left: `${hoverPercent * 100}%` }}
+                  />
+                </>
+              )}
+            </div>
+            <div className="flex justify-between w-full text-sm text-cyan-300 mt-2 font-mono">
+              <span>{formatTime(audioCurrentTime)}</span>
+              <span>{formatTime(audioDuration)}</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-4 mt-6">
+              <button
+                className="sci-fi-button-round"
+                onClick={playPreviousTrack}
+                aria-label="Previous"
+              >
+                {" "}
+                ⏮{" "}
+              </button>
+              <button
+                className={`rounded-full p-4 text-3xl cursor-pointer shadow-xl transition-all duration-300 ${
+                  isPlayingAudio ? "bg-red-600 hover:bg-red-500" : "bg-green-600 hover:bg-green-500"
+                } text-white`}
+                onClick={toggleAudioPlayback}
+                aria-label="Play/Pause"
+              >
+                {isPlayingAudio ? "❚❚" : "▶"}
+              </button>
+              <button
+                className="sci-fi-button-round"
+                onClick={playNextTrack}
+                aria-label="Next"
+              >
+                {" "}
+                ⏭{" "}
+              </button>
+              <button
+                className={`sci-fi-button ${
+                  isShuffling ? "bg-yellow-500 text-black hover:bg-yellow-400" : ""
+                }`}
+                onClick={toggleShuffle}
+                aria-label="Shuffle"
+              >
+                🔀 {isShuffling ? "ON" : "OFF"}
+              </button>
+              <button
+                className={`sci-fi-button`}
+                onClick={cycleLoopMode}
+                aria-label={
+                  loopMode === 0
+                    ? "No loop"
+                    : loopMode === 1
+                    ? "Loop playlist"
+                    : "Loop single track"
+                }
+                title={
+                  loopMode === 0
+                    ? "No loop"
+                    : loopMode === 1
+                    ? "Loop playlist"
+                    : "Loop single"
+                }
+              >
+                {loopMode === 0 ? <LoopNoneIcon /> : loopMode === 1 ? <LoopPlaylistIcon /> : <LoopSingleIcon />}
+              </button>
+              {/* Shuffle toggle as before */}
+              <button
+                className={`sci-fi-button ${isShuffling ? "bg-yellow-500 text-black hover:bg-yellow-400" : ""}`}
+                onClick={() => setIsShuffling((prev) => !prev)}
+                aria-label="Shuffle"
+              >
+                🔀 {isShuffling ? "ON" : "OFF"}
+              </button>
+            </div>
+
+            <div
+              className="mt-8 bg-black/30 border border-cyan-700 rounded-xl p-4 group"
+              onMouseEnter={() => setShowTracksHover(true)}
+              onMouseLeave={() => setShowTracksHover(false)}
+            >
+              {!showTracksHover ? (
+                <div className="flex items-center text-cyan-300 text-sm">
+                  <span>
+                    Tracks in{" "}
+                    {currentPlaylistName === "All" ? "All Beats" : currentPlaylistName}:
+                  </span>
+                  <span className="ml-2 bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-bold">
+                    {currentPlaylist.length}
+                  </span>
+                  <span className="ml-auto text-cyan-400">Hover to view ▸</span>
+                </div>
+              ) : currentPlaylist.length === 0 ? (
+                <div className="text-cyan-300 text-center py-4">
+                  No tracks in this playlist.
+                </div>
+              ) : (
+                <div className="max-h-60 overflow-y-auto pr-2 scrollbar-thin">
+                  {currentPlaylist.map((track, i) => {
+                    const active = i === currentTrackIndex && audioState === track.url;
+                    const displayName = track.name || "Unknown Track";
+                    return (
+                      <div
+                        key={`${track.url}-${i}`}
+                        className={`flex items-center justify-between p-3 mb-2 rounded-lg cursor-pointer ${
+                          active
+                            ? "bg-cyan-600 text-black"
+                            : "bg-black/40 text-white hover:bg-cyan-900"
+                        }`}
+                        onClick={() => playTrackAt(i)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-6 h-6 flex items-center justify-center rounded-md font-bold text-xs ${
+                              active ? "bg-black text-cyan-400" : "bg-gray-700"
+                            }`}
+                          >
+                            {i + 1}
+                          </div>
+                            <div className="font-semibold flex items-baseline">
                               {track.artist && track.artist.name && track.artist.id ? (
                                 <>
                                   <button
@@ -1375,7 +1160,7 @@ const FreestylePage = () => {
                                       event.stopPropagation();
                                       navigate(`/artists/${track.artist.id}`);
                                     }}
-                                    className="text-green-300 hover:text-green-100 underline focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 mr-1 text-xs"
+                                    className="text-green-300 hover:text-green-100 underline focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 mr-1"
                                     aria-label={`View profile for ${track.artist.name}`}
                                   >
                                     {track.artist.name}
@@ -1383,39 +1168,35 @@ const FreestylePage = () => {
                                   <span className="mx-1">-</span>
                                 </>
                               ) : null}
-                              <span className="truncate">{track.name}</span>
+                              {track.name}
                             </div>
-                          </div>
-                          <div className={`text-xs ${active ? "text-red-500" : "text-gray-400"}`}>
+                        </div>
+                        <div className={`text-xs ${active ? "text-red-500" : "text-gray-400"}`}>
                             {active ? (isPlayingAudio ? "Playing" : "Paused") : "Tap to play"}
                           </div>
+                          {currentPlaylistName !== "All" && (
+                            <button
+                              className="text-red-400 hover:text-red-600 text-lg"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeSongFromExistingPlaylist(currentPlaylistName, track.url);
+                              }}
+                            >
+                              ×
+                            </button>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-              {/* Resize handle (bottom-left) */}
-              <div
-                onPointerDown={onResizePointerDown}
-                className="absolute -bottom-3 -right-3 w-6 h-6 bg-cyan-500/80 rounded-md cursor-nwse-resize shadow-md flex items-center justify-center text-xs select-none touch-none"
-                title="Drag to resize (bottom-left)"
-                style={{
-                  touchAction: "none",
-                  userSelect: "none"
-                }}
-              >
-                ⇲
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Toggle button for player: position left-bottom */}
         <button
           onClick={() => setIsAudioPlayerVisible((v) => !v)}
-          className="fixed bottom-6 left-6 w-12 h-12 bg-black/30 text-cyan-400 border border-cyan-400/50 rounded-full shadow-xl flex items-center justify-center vibrate z-[70]"
+          className="fixed bottom-6 left-6 w-12 h-12 bg-black/30 text-cyan-400 border border-cyan-400/50 rounded-full shadow-xl flex items-center justify-center vibrate z-[60]"
         >
           {isAudioPlayerVisible ? <HudOffIcon size={22} /> : <HudIcon size={22} />}
         </button>
@@ -1493,7 +1274,6 @@ const FreestylePage = () => {
             </div>
           </div>
         )}
-
         <Footer />
       </div>
     </>

@@ -1,9 +1,9 @@
-// client/src/pages/template.jsx
+// client/src/pages/MainTrain.jsx
 
 import PropTypes from "prop-types";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Global Axios Configuration (keep consistent with App.jsx)
@@ -23,7 +23,7 @@ const localBeats = Object.values(beatModules).sort((a, b) =>
 // Utility: classNames helper
 const cx = (...classes) => classes.filter(Boolean).join(" ");
 
-// Styling helpers (kept close to your existing style)
+// Styling helpers
 const getButtonClass = (active) =>
   cx(
     "relative px-4 py-2 text-white font-medium transition-all duration-200 text-sm",
@@ -75,19 +75,16 @@ function MainTrain({
   toggleAudioPlayback,
   onBeatsReady = () => {},
   selectedAudio = null,
-  panelLabel = "Beats",
   initialTab = "music",
-  showPanel,
-  setShowPanel,
-  panelOffsetLeft,
   initialSongs = [],
   isSongsLoading = true,
+  setShowPanel,
+  navbarBounds, // Receive navbar bounds
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const navigate = useNavigate();
-
+  const panelRef = useRef(null);
   const [hasLoadedSongs, setHasLoadedSongs] = useState(false);
-  // State to track which song is currently being activated/loaded locally
   const [activatingSongUrl, setActivatingSongUrl] = useState(null);
 
   useEffect(() => {
@@ -99,28 +96,35 @@ function MainTrain({
     }
   }, [initialSongs, isSongsLoading, onBeatsReady, hasLoadedSongs]);
 
-  // Effect to reset activatingSongUrl once the selectedAudio prop changes
   useEffect(() => {
-    // If the selectedAudio is now the one we were activating, or if it changed to something else,
-    // clear the activating state.
     if (activatingSongUrl && (selectedAudio === activatingSongUrl || selectedAudio !== null)) {
       setActivatingSongUrl(null);
     }
   }, [selectedAudio, activatingSongUrl]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (panelRef.current && !panelRef.current.contains(event.target)) {
+        setShowPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [setShowPanel]);
+
+
   const handlePlayPause = useCallback(
     (url) => {
-      // Immediately set the activating state
       setActivatingSongUrl(url);
 
       if (selectedAudio !== url) {
         onAudioChange?.(url);
-        // If audio isn't already playing, toggle it on for the new selection
         if (!isPlayingAudio) {
           toggleAudioPlayback?.();
         }
       } else {
-        // If it's the same audio, just toggle playback
         toggleAudioPlayback?.();
       }
     },
@@ -170,7 +174,7 @@ function MainTrain({
 
   const renderRow = (beatInfo, index) => {
     const isActive = selectedAudio === beatInfo.url;
-    const isCurrentlyActivating = activatingSongUrl === beatInfo.url; // Check local activating state
+    const isCurrentlyActivating = activatingSongUrl === beatInfo.url;
 
     const prefix = (
       <span className="mr-2 font-mono text-sm" aria-label="index">
@@ -195,13 +199,13 @@ function MainTrain({
         <span className="flex items-center" style={{ minWidth: 0 }}>
           {prefix}
           <span
-            className="text-sm pr-2 font-mono whitespace-nowrap overflow-hidden text-ellipsis min-w-0"
+            className="text-sm pr-2 font-mono whitespace-nowrap" // Removed overflow-hidden and text-ellipsis
             title={typeof beatInfo.label === "string" ? beatInfo.label : ""}
           >
             {beatInfo.label}
           </span>
         </span>
-        {isCurrentlyActivating && !isActive ? ( // Show LOADING if activating and not yet the active song
+        {isCurrentlyActivating && !isActive ? (
           <span className="text-gray-400 text-xs flex-shrink-0 ml-2">LOADING...</span>
         ) : (
           <button
@@ -209,7 +213,7 @@ function MainTrain({
             onClick={() => handlePlayPause(beatInfo.url)}
             onKeyDown={(e) => handleKeyActivate(e, beatInfo.url)}
             className={cx(getSubButtonClass(isActive), "flex-shrink-0 ml-2")}
-            aria-label={`$
+            aria-label={`${
               isActive ? (isPlayingAudio ? "Pause" : "Play") : "Activate"
             } ${typeof beatInfo.label === "string" ? beatInfo.label : ""}`}
           >
@@ -220,19 +224,48 @@ function MainTrain({
     );
   };
 
+  const [panelStyle, setPanelStyle] = useState({});
+
+  useEffect(() => {
+    if (navbarBounds.width > 0 && panelRef.current) {
+      const panelRect = panelRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Calculate center position relative to the viewport for the parent component of FreestyleNavbar
+      // which is effectively the entire FreestylePage content area.
+      // Assuming FreestyleNavbar is positioned `fixed` to the top-left of the viewport.
+      // So the center of the FreestylePage (excluding the navbar) would be:
+      const contentAreaLeft = navbarBounds.width;
+      const contentAreaWidth = viewportWidth - contentAreaLeft;
+
+      const centerLeft = contentAreaLeft + (contentAreaWidth / 2);
+      const centerTop = viewportHeight / 2;
+
+      setPanelStyle({
+        position: 'fixed', // Keep fixed to easily position relative to viewport
+        left: `${centerLeft - (panelRect.width / 2)}px`,
+        top: `${centerTop - (panelRect.height / 2)}px`,
+      });
+    }
+  }, [navbarBounds, labels.length, initialSongs.length, activeTab]); // Recalculate if navbarBounds change or content changes
+
   return (
     <motion.div
+      ref={panelRef}
       id="beats-panel"
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1, ...panelStyle }} // Apply dynamic style here
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       role="dialog"
       aria-label="Beats panel"
-      className={`absolute top-0 left-[${panelOffsetLeft}] mt-0 p-4
-                 bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-sm rounded-lg shadow-2xl flex flex-col
-                 min-w-[200px] max-w-[400px] max-h-screen overflow-y-auto border border-cyan-700 shadow-cyan-500/15
-                 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent z-[500]`}
+      className={`p-4
+                 bg-gradient-to-br from-black/80 to-gray-900/80 backdrop-blur-md rounded-lg shadow-2xl flex flex-col
+                 border border-cyan-700 shadow-cyan-500/15
+                 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent z-[500]
+                 overflow-y-auto max-h-[90vh]`} // `w-auto` for content-based width
+      style={{ ...panelStyle }} // Also apply for initial render positioning
     >
       <div className="flex justify-around mb-4 border-b border-cyan-800 pb-2">
         <button
@@ -250,7 +283,7 @@ function MainTrain({
             AUDIO LOGS
           </h3>
           <div
-            className="max-h-60 overflow-y-auto border border-gray-700 rounded-md p-2 bg-black/30
+            className="max-h-96 overflow-y-auto border border-gray-700 rounded-md p-2 bg-black/30
                        scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent"
             role="listbox"
             aria-label="Available beats"
@@ -275,13 +308,16 @@ MainTrain.propTypes = {
   toggleAudioPlayback: PropTypes.func,
   onBeatsReady: PropTypes.func,
   selectedAudio: PropTypes.string,
-  panelLabel: PropTypes.string,
   initialTab: PropTypes.string,
-  showPanel: PropTypes.bool.isRequired,
   setShowPanel: PropTypes.func.isRequired,
-  panelOffsetLeft: PropTypes.string.isRequired,
   initialSongs: PropTypes.array,
   isSongsLoading: PropTypes.bool,
+  navbarBounds: PropTypes.shape({
+    top: PropTypes.number,
+    left: PropTypes.number,
+    width: PropTypes.number,
+    height: PropTypes.number,
+  }).isRequired,
 };
 
 export default MainTrain;

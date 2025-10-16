@@ -21,10 +21,14 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || "localhost";
-
+// const HOST = process.env.HOST || "localhost";
+const HOST =  "0.0.0.0"; // 👈 Allow connections from all network interfaces
+// 🟢 CORS Configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+];
 const corsOptions = {
-  origin: ['http://localhost:5173'],//['https://mycampushome.netlify.app', 'http://localhost:3000', 'http://localhost:5173'],
+  origin: allowedOrigins,// ['http://kooshaportfolio.work.gd:5173'],//['https://mycampushome.netlify.app', 'http://localhost:3000', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,  // Enable credentials (cookies, authorization headers, etc)
@@ -36,12 +40,6 @@ app.use(express.json());
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
-// MongoDB Connection
-// mongoose
-//   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-//   .then(() => console.log("MongoDB connected"))
-//   .catch((error) => console.error("MongoDB connection error:", error));
-
 // PostgreSQL Sync models
 sequelize.authenticate()
   .then(() => sequelize.sync({ alter: true }))
@@ -49,18 +47,8 @@ sequelize.authenticate()
   .catch(console.error);
 
 // Routes
-// app.use("/api/user", userRoutes);
-// app.use("/api/users", PostgreSQLRoutes);
-// app.use("/api/artists", PostgreSQLRoutes);
-// app.use("/api/songs", PostgreSQLRoutes);
-// app.use("/api/plays", PostgreSQLRoutes);
 app.use("/api", PostgreSQLRoutes);
 app.use("/api/auth", authRoutes);
-
-// app.use("/api/universities", universityRoutes);
-// app.use("/api/listing", listingRoutes);
-// app.use("/api/accommodation", accommodationRoutes);
-// app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
 
 
@@ -70,7 +58,8 @@ app.use("/api/messages", messageRoutes);
 const server = http.createServer(app); // `app` is your Express app instance
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173', // Adjust based on your frontend's URL
+    origin: allowedOrigins, // Adjust based on your frontend's URL
+    // origin: 'http://localhost:5173', // Adjust based on your frontend's URL
     methods: ['GET', 'POST'],
     credentials: true
   }

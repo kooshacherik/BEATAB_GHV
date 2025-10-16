@@ -89,15 +89,17 @@ export default class Renderer extends Component {
     }
 
     // New effects for every 4th beat (4, 8, 12, 16, 20...)
-    if (this.beatCounter % 4 === 0) {
-      this.triggerCameraShake(); // Shake camera every 4 beats
+    if (this.beatCounter % 4 === 0 && this.beatCounter % 16 !==0) {
+      this.SpotLightPLYDemo_ext1?.animateLightStrobe(0.1, 1.0, 0); // Strobe light every 16 beats
       this.SpotLightPLYDemo_ext1?.animateLightCone(Math.PI / 8, Math.PI / 2, 0.5, "power1.inOut", 0); // Cone animation from light
     }
 
     // New effects for every 16th beat (16, 32, 48...)
     if (this.beatCounter % 16 === 0) {
-      this.animateCameraSpiralEffect(); // Camera spiral every 16 beats
+      this.triggerCameraShake(); // Shake camera every 4 beats
+
       this.SpotLightPLYDemo_ext1?.animateLightStrobe(0.1, 1.0, 0); // Strobe light every 16 beats
+      this.SpotLightPLYDemo_ext1?.animateFloorColorCycle();
     }
 
 
@@ -722,7 +724,7 @@ export default class Renderer extends Component {
     this.cameraAnimator.animateCameraPath(path, 10000, Easing.Linear.None, true);
   }
   triggerCameraShake() {
-    this.cameraAnimator.shakeCamera(500, 0.5);
+    this.cameraAnimator.shakeCamera(100, 0.5);
   }
   render() {
     const overlayClasses = "absolute inset-0 flex items-center justify-center bg-black/65 text-white text-2xl z-10 pointer-events-none";

@@ -111,6 +111,8 @@ export default class SpotLightPLYDemo_ext1 extends THREE.Object3D {
    * Initializes the Three.js spotlight and a floor mesh.
    */
   _initLights() {
+    // const hemi = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 0.15);
+    // this.holderObjects.add(hemi);
     this.spotLight = new THREE.SpotLight(0xb6b7b8, this.params.intensity);
     this.spotLight.position.set(2.5, 5, 2.5);
     this.spotLight.angle = this.params.angle;
@@ -124,10 +126,10 @@ export default class SpotLightPLYDemo_ext1 extends THREE.Object3D {
     this.spotLight.shadow.focus = this.params.focus;
     this.holderObjects.add(this.spotLight);
 
-    this.lightHelper = new THREE.SpotLightHelper(this.spotLight);
-    this.holderObjects.add(this.lightHelper);
+    // this.lightHelper = new THREE.SpotLightHelper(this.spotLight);
+    // this.holderObjects.add(this.lightHelper);
 
-    const floorSize = 20;
+    const floorSize = 120;
     const floorRes = 120;
     const floorGeo = new THREE.PlaneGeometry(floorSize, floorSize, floorRes, floorRes);
     const floorMat = new THREE.MeshLambertMaterial({ color: 0xbcbcbc, side: THREE.DoubleSide });
@@ -566,7 +568,7 @@ export default class SpotLightPLYDemo_ext1 extends THREE.Object3D {
 
   /** Updates the light helper. This should be called in the main render loop. */
   update() {
-    this.lightHelper?.update();
+    // this.lightHelper?.update();
     // GSAP handles the updates for light and floor timelines, so no manual update needed here
     // unless there are non-GSAP animations still running (e.g., the default ripple in onBPMBeat)
   }

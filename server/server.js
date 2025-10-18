@@ -26,6 +26,7 @@ const HOST =  "0.0.0.0"; // 👈 Allow connections from all network interfaces
 // 🟢 CORS Configuration
 const allowedOrigins = [
   "http://localhost:5173",
+  //"https://BEATAB.vercel.app/",
 ];
 const corsOptions = {
   origin: allowedOrigins,// ['http://kooshaportfolio.work.gd:5173'],//['https://mycampushome.netlify.app', 'http://localhost:3000', 'http://localhost:5173'],

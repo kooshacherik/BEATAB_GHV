@@ -1,7 +1,7 @@
 {
-  "name": "my-campus-home-lk",
+  "name": "BEATAB",
   "version": "1.0.0",
-  "description": "A comprehensive platform specialized in finding apartments, boarding houses, rooms for rent near Sri Lankan Universities ",
+  "description": "A platfrom to parctice freestyle rapping",
   "main": "index.js",
   "scripts": {
     "install-server": "cd server && npm install",
@@ -16,8 +16,8 @@
     "build": "npm run install-server && npm run install-client && npm run build-client"
   },
   "keywords": [],
-  "author": "Madhushankha De Silva, Chamoda Pramudika, Nimash Dilshan",
-  "license": "ISC",
+  "author": "Koosha Tork Cherik",
+  // "license": "ISC",
   "devDependencies": {
     "concurrently": "^9.2.1"
   }

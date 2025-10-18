@@ -1,8 +1,11 @@
+cd d:/SUBLIME_PROJECTS/Main_Freestyle_Web
+
 find . -maxdepth 5 \( -type d -o -type f \) \
   -not -path "*/node_modules/*" \
   -not -path "*/public/*" \
   -not -path "*/.git/*" \
-  -not -path "*/New folder/*"
+  -not -path "*/New folder/*"\
+  -not -path "*/dist/*"
 
 
 ./.gitattributes

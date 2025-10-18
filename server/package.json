@@ -1,5 +1,5 @@
 {
-    "name": "my-campus-home-lk-backend",
+    "name": "BEATAB-backend",
     "version": "1.0.0",
     "main": "server.js",
     "type": "module",
@@ -8,9 +8,9 @@
         "devStart": "nodemon server.js"
     },
     "keywords": [],
-    "author": "Madhushankha De Silva",
+    "author": "Koosha Tork Cherik",
     "license": "ISC",
-    "description": "backend for My Campus Home LK",
+    "description": "backend for BEATAB",
     "dependencies": {
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.20.3",
